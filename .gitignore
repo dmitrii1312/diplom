@@ -1,0 +1,5 @@
+.terraform
+.terraform.lock.hcl
+terrafrom.tfstate
+environ.sh
+inventory
