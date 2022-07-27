@@ -1,0 +1,33 @@
+---
+# tasks file for gitlab
+- name: install gitlab
+  block:
+  - name: add gitlab repo
+    command: "curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | sudo bash"
+
+  - name: Install gitlab-ce
+    apt:
+      name: gitlab-ce
+      state: latest
+
+  - name: set external url
+    lineinfile:
+      regexp: 'external_url'
+      line: "external_url 'https://gitlab.{{ domain_name }}'"
+
+  - name: reconfigure gitlab
+    command: "gitlab-ctl reconfigure"
+  when: "'gitlab' in group_names"
+
+- name: install runner
+  block:
+  - name: add gitlab repo
+    command: "curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | sudo bash"
+
+  - name: install gitlab-runner
+    apt:
+      name: gitlab-runner
+      state: latest
+
+  when: "'runner' in group_names"
+    

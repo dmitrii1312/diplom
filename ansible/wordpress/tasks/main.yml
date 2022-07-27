@@ -1,0 +1,19 @@
+---
+# tasks file for wordpress
+- name: Install web server
+  apt:
+    name: 
+      - nginx
+      - php
+    state: latest
+
+- name: Extract wordpress
+  unarchive:
+    remote_src: true
+    src: https://wordpress.org/latest.tar.gz
+    dest: {{ wordpress_web_root }}
+
+- name: Copy config
+  template:
+    src: wp-config.php.j2
+    dest: {{ wordpress_web_root }}

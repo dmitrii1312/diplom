@@ -1,0 +1,6 @@
+---
+- hosts: nginx
+  name: Install Nginx revers proxy
+  become: true
+  roles:
+    - nginx-proxy

@@ -1,0 +1,20 @@
+---
+# tasks file for nginx-proxy
+- name: Install nginx
+  apt:
+    name: 
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: latest
+
+- name: copy configs  
+  template:
+    src: site.j2
+    dest: /etc/nginx/sites-enabled/{{ item.name }}
+  loop: "{{ sites }}"
+
+- name: run certbot
+  command: "certbot --nginx -d {{ item.name }}.{{ domain_name }} -n --test-cert -m dmitrii_1980@mail.ru --agree-tos --redirect"
+  loop: "{{ sites }}"
+

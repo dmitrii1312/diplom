@@ -1,0 +1,4 @@
+sites:
+%{ for host in hosts ~}- name: ${host.key}
+  address: "${vms["${host.key}"].network_interface.0.ip_address}"
+%{ endfor ~}

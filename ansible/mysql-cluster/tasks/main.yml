@@ -1,0 +1,78 @@
+---
+# tasks file for mysql-cluster
+- name: Install packages
+  apt:
+    name: 
+      - mysql-server
+      - mysql-client
+      - python3-pymysql
+    state: latest
+
+#- name: Make installation secure
+#  command: "mysql_secure_installation"
+
+- name: copy mysql config
+  template:
+    src: mysqld.cnf.j2
+    dest: /etc/mysql/mysql.conf.d/mysqld.cnf
+
+- name: restart mysql
+  systemd:
+    name: mysql
+    state: restarted
+
+- name: create replication user
+  community.mysql.mysql_user:
+    name: "{{ mysql_replication_user }}"
+    password: "{{ mysql_replication_password }}"
+    priv: "*.*:REPLICATION SLAVE,REPLICATION CLIENT"
+    state: present
+  when: "'db01' in group_names"
+
+- name: check slave replication status
+  mysql_replication:
+    mode: getslave
+    login_user: "{{ mysql_replication_user }}"
+    login_password: "{{ mysql_replication_password }}"
+  ignore_errors: true
+  register: slave
+  when: "'db02' in group_names"
+
+- name: check master replication status
+  mysql_replication: 
+    mode: getmaster
+  register: master
+  when: "'db01' in group_names"
+
+- name: configure replication on slave
+  mysql_replication:
+    mode: changemaster
+    master_host: "{{ hostvars[groups['db01'][0]]['ansible_eth0']['ipv4']['address'] }}"
+    master_user: "{{ mysql_replication_user }}"
+    master_password: "{{ mysql_replication_password }}"
+    master_log_file: "{{ master.File }}"
+    master_log_pos: "{{ master.Position }}"
+  ignore_errors: true
+  when: "'db02' in group_names"
+
+- name: start replication
+  mysql_replication: 
+    mode: startslave
+  when: "'db02' in group_names"
+
+- name: create database {{ mysql_database_name }}
+  mysql_db:
+    name: "{{ mysql_database_name }}"
+    state: present
+  when: "'db01' in group_names"
+
+- name: create user "{{ mysql_username }}"
+  mysql_user:
+    name: "{{ mysql_username }}"
+    password: "{{ mysql_password }}"
+    priv: "{{ mysql_database_name }}.*:ALL"
+    state: present
+  when: "'db01' in group_names"
+
+
+

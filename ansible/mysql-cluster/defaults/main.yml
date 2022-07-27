@@ -1,0 +1,9 @@
+---
+# defaults file for mysql-cluster
+mysql_replication_user: replication
+mysql_replication_password: 123456
+
+mysql_database_name: wordpress
+mysql_username: wordpress
+mysql_password: wordpress
+

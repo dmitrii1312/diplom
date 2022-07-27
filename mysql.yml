@@ -1,0 +1,8 @@
+---
+- hosts: 
+    - db01
+    - db02
+  name: Install Nginx revers proxy
+  become: true
+  roles:
+    - mysql-cluster
