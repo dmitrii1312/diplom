@@ -20,7 +20,7 @@ user		= mysql
 # socket	= /var/run/mysqld/mysqld.sock
 # port		= 3306
 # datadir	= /var/lib/mysql
-
+server-id	= {{ 10000 |random }}
 
 # If MySQL is running as a replication slave, this should be
 # changed. Ref https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_tmpdir

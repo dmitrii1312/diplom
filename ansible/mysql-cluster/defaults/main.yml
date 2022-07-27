@@ -7,3 +7,4 @@ mysql_database_name: wordpress
 mysql_username: wordpress
 mysql_password: wordpress
 
+mysql_root_password: 123456

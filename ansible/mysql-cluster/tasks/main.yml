@@ -21,13 +21,36 @@
     name: mysql
     state: restarted
 
+- name: Ensure root user can only login from localhost
+  become: yes
+  mysql_user:
+    login_password: "{{ mysql_root_password }}"
+    check_implicit_admin: yes
+    login_user: root
+    name: root
+    host: "{{ item }}"
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    state: present
+  with_items:
+    - localhost
+    - 127.0.0.1
+
 - name: create replication user
   community.mysql.mysql_user:
+    login_password: "{{ mysql_root_password }}"
+    login_user: root
     name: "{{ mysql_replication_user }}"
+    host: "{{ item }}"
     password: "{{ mysql_replication_password }}"
-    priv: "*.*:REPLICATION SLAVE,REPLICATION CLIENT"
+    priv: "*.*:REPLICATION SLAVE,REPLICATION CLIENT,SUPER"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
     state: present
-  when: "'db01' in group_names"
+  loop:
+    - localhost
+    - 127.0.0.1
+    - "{{ localaddress.db01 }}"
+    - "{{ localaddress.db02 }}"
 
 - name: check slave replication status
   mysql_replication:
@@ -41,37 +64,65 @@
 - name: check master replication status
   mysql_replication: 
     mode: getmaster
+    login_user: "{{ mysql_replication_user }}"
+    login_password: "{{ mysql_replication_password }}"
   register: master
+  when: "'db01' in group_names"
+
+- name: save file
+  become: no
+  delegate_to: localhost
+  copy:
+    content: "{{ master.File }}"
+    dest: "/tmp/master.File"
+  when: "'db01' in group_names"
+
+- name: save position
+  become: no
+  delegate_to: localhost
+  copy:
+    content: "{{ master.Position }}"
+    dest: "/tmp/master.Position"
   when: "'db01' in group_names"
 
 - name: configure replication on slave
   mysql_replication:
     mode: changemaster
-    master_host: "{{ hostvars[groups['db01'][0]]['ansible_eth0']['ipv4']['address'] }}"
+    login_user: "{{ mysql_replication_user }}"
+    login_password: "{{ mysql_replication_password }}"
+    master_host: "{{ localaddress.db01 }}"
     master_user: "{{ mysql_replication_user }}"
     master_password: "{{ mysql_replication_password }}"
-    master_log_file: "{{ master.File }}"
-    master_log_pos: "{{ master.Position }}"
+    master_log_file: "{{ lookup('file', '/tmp/master.File') }}"
+    master_log_pos: "{{ lookup('file', '/tmp/master.Position') }}"
   ignore_errors: true
   when: "'db02' in group_names"
 
 - name: start replication
   mysql_replication: 
+    login_user: "{{ mysql_replication_user }}"
+    login_password: "{{ mysql_replication_password }}"
     mode: startslave
   when: "'db02' in group_names"
 
 - name: create database {{ mysql_database_name }}
   mysql_db:
+    login_password: "{{ mysql_root_password }}"
+    login_user: root
     name: "{{ mysql_database_name }}"
     state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   when: "'db01' in group_names"
 
 - name: create user "{{ mysql_username }}"
   mysql_user:
+    login_password: "{{ mysql_root_password }}"
+    login_user: root
     name: "{{ mysql_username }}"
     password: "{{ mysql_password }}"
     priv: "{{ mysql_database_name }}.*:ALL"
     state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
   when: "'db01' in group_names"
 
 

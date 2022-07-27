@@ -12,70 +12,84 @@ locals {
       stage = {
         cpu = 2
         mem = 2
+        nat = true
       }
       prod = {
         cpu = 2
         mem = 2
+        nat = true
       }
     }
     "db02" = {
       stage = {
         cpu = 2
         mem = 2
+        nat = true
       }
       prod = {
         cpu = 2
         mem = 2
+        nat = true
       }
     }
     "monitoring" = {
       stage = {
         cpu = 4
         mem = 4
+        nat = true
       }
       prod = {
         cpu = 4
         mem = 4
+        nat = true
       }
     }
     "gitlab" = {
       stage = {
         cpu = 4
         mem = 4
+        nat = true
       }
       prod = {
         cpu = 4
         mem = 4
+        nat = true
       }
     }
     "runner" = {
       stage = {
         cpu = 4
         mem = 4
+        nat = true
       }
       prod = {
         cpu = 4
         mem = 4
+        nat = true
       }
     }
     "app" = {
       stage = {
         cpu = 4
         mem = 4
+        nat = true
       }
       prod = {
         cpu = 4
         mem = 4
+        nat = true
       }
     }
     "nginx" = {
       stage = {
         cpu = 2
         mem = 2
+        nat = true
       }
       prod = {
         cpu = 2
         mem = 2
+        nat = true
       }
     }
   }
@@ -132,7 +146,7 @@ resource "yandex_compute_instance" "vms" {
   }
   network_interface {
     subnet_id = yandex_vpc_subnet.subnet1[local.default_zone].id
-    nat = true
+    nat = each.value[terraform.workspace].nat
   }
   metadata = {
     ssh-keys = "ubuntu:${file("~/.ssh/id_rsa.pub")}"
