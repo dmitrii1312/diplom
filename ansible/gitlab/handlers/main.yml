@@ -1,2 +1,16 @@
 ---
 # handlers file for gitlab
+- name: Reconfigure gitlab
+  shell: gitlab-ctl reconfigure
+  when: "'gitlab' in group_names"
+
+- name: register runner
+  shell: '/tmp/gitlab-register.sh && touch /tmp/registered'
+  args:
+    creates: /tmp/registered
+  when: "'runner' in group_names"
+
+- name: commit git repo
+  become: false
+  shell: 'cd /tmp/wordpress && git add * && git commit -m "next commit" && git -c http.sslVerify=false push --set-upstream origin main'
+  delegate_to: localhost

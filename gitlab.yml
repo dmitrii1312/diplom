@@ -2,7 +2,8 @@
 - hosts: 
     - gitlab
     - runner
-  name: Install Nginx revers proxy
+    - app
+  name: Install gitlab
   become: true
   roles:
     - gitlab

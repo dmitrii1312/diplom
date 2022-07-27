@@ -1,2 +1,5 @@
 ---
 # defaults file for gitlab
+git_root: "Qwerty123"
+private_token: sdfjeiw123qsxerty865
+

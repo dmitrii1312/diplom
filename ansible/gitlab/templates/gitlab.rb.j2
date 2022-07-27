@@ -1,0 +1,5 @@
+external_url 'https://{{ gitlab_url }}'
+
+nginx['listen_port'] = 80
+nginx['listen_https'] = false
+gitlab_rails['initial_root_password']='{{ git_root }}'

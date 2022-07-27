@@ -1,0 +1,2 @@
+#! /bin/bash
+gitlab-rails runner "token = User.find_by_username('root').personal_access_tokens.create(scopes: [:api], name: '5'); token.set_token('{{ private_token }}'); token.save!" && touch /tmp/token

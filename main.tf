@@ -95,9 +95,9 @@ locals {
   local_port_map = {
     "www" = 80
     "gitlab" = 80
-    "grafana" = 8081
-    "prometheus" = 8082
-    "alertmanager" = 8083
+    "grafana" = 3000
+    "prometheus" = 9090
+    "alertmanager" = 9093
   }
   default_zone = "ru-central1-a"
   reverse_proxy = "nginx"
@@ -151,10 +151,10 @@ resource "yandex_dns_recordset" "dns_records" {
 }
 resource "local_file" "hosts_cfg" {
   for_each = local.vm_maps
-  content = "[${each.key}]\n${yandex_compute_instance.vms["${each.key}"].network_interface.0.nat_ip_address}\n"
+  content = "[${each.key}]\n${yandex_compute_instance.vms["${each.key}"].network_interface.0.ip_address} ansible_ssh_common_args='-o ProxyCommand=\"ssh -W %h:%p -q ubuntu@www.${local.domain}\"'\n"
   filename = "inventory/${each.key}"
 }
 resource "local_file" "var_cfg" {
-  content = "domain_name: \"${local.domain}\"\nlocaladdress:\n%{ for vm in yandex_compute_instance.vms }  ${vm.name}: ${vm.network_interface.0.ip_address}\n%{ endfor ~}sites:\n%{ for key, value in local.extnames_map ~}- name: ${key}\n  address: \"{{ localaddress.${value} }}\"\n  port: ${lookup(local.local_port_map, "${key}")}\n%{ endfor ~}"
+  content = "domain_name: \"${local.domain}\"\nlocaladdress:\n%{ for vm in yandex_compute_instance.vms }  ${vm.name}: ${vm.network_interface.0.ip_address}\n%{ endfor ~}sites:\n%{ for key, value in local.extnames_map ~}- name: ${key}\n  address: \"{{ localaddress.${value} }}\"\n  port: ${lookup(local.local_port_map, "${key}")}\n%{ endfor ~}\n%{ for key, value in local.extnames_map ~}${key}_url: ${value}.${local.domain}\n%{ endfor ~}"
   filename = "inventory/group_vars/all/vars.yml"
 }

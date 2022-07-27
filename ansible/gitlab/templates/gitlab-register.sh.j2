@@ -1,0 +1,10 @@
+#! /bin/bash
+gitlab-runner register --non-interactive \
+--url "http://{{ localaddress.gitlab }}" \
+--registration-token "{{ lookup('file', '/tmp/register-token') }}" \
+--executor "docker" \
+--docker-image alpine:latest \
+--description "docker-runner" \
+--run-untagged="true" \
+--locked="false" \
+--access-level="not_protected"
