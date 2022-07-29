@@ -1,12 +1,5 @@
 ---
 - name: Install monitoring on all hosts
-  hosts:
-  - app
-  - db01
-  - db02
-  - gitlab
-  - monitoring
-  - nginx
-  - runner
+  hosts: all
   roles:
   - monitoring

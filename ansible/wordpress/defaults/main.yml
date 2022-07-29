@@ -2,6 +2,6 @@
 # defaults file for wordpress
 wordpress_web_root: /var/www/html
 wordpress_db_name: wordpress
-wordpress_db_host: {{ localaddress.db01 }}
+wordpress_db_host: "{{ localaddress.db01 }}"
 wordpress_db_password: wordpress
 wordpress_db_username: wordpress

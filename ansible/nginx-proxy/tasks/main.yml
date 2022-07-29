@@ -15,6 +15,6 @@
   loop: "{{ sites }}"
 
 - name: run certbot
-  command: "certbot --nginx -d {{ item.name }}.{{ domain_name }} -n --test-cert -m dmitrii_1980@mail.ru --agree-tos --redirect"
+  shell: "certbot --nginx -d {{ item.name }}.{{ domain_name }} -n{% if testcert | bool  %} --test-cert{% endif %} -m dmitrii_1980@mail.ru --agree-tos --redirect"
   loop: "{{ sites }}"
 

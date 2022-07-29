@@ -115,6 +115,37 @@ locals {
   }
   default_zone = "ru-central1-a"
   reverse_proxy = "nginx"
+  vars = {
+    stage = {
+      "testcert" = false
+      "mysql_replication_password" = "123456"
+      "mysql_database_name" = "wordpress"
+      "mysql_username" = "wordpress"
+      "mysql_password" = "wordpress"
+      "mysql_root_password" = "123456"
+      "wordpress_web_root" = "/var/www/html"
+      "wordpress_db_name" = "{{ mysql_database_name }}"
+      "wordpress_db_username" = "{{ mysql_username }}"
+      "wordpress_dp_password" = "{{ mysql_password }}"
+      "git_root" = "Qwerty123"
+      "private_token" = "sdfjeiw123qsxerty865"
+      
+    }
+    prod = {
+      "testcert" = false
+      "mysql_replication_password" = "123456"
+      "mysql_database_name" = "wordpress"
+      "mysql_username" = "wordpress"
+      "mysql_password" = "wordpress"
+      "mysql_root_password" = "123456"
+      "wordpress_web_root" = "/var/www/html"
+      "wordpress_db_name" = "{{ mysql_database_name }}"
+      "wordpress_db_username" = "{{ mysql_username }}"
+      "wordpress_dp_password" = "{{ mysql_password }}"
+      "git_root" = "Qwerty123"
+      "private_token" = "sdfjeiw123qsxerty865"
+    }
+  }
 }
 resource "yandex_vpc_network" "network1" {
   name = "network1"
@@ -165,10 +196,10 @@ resource "yandex_dns_recordset" "dns_records" {
 }
 resource "local_file" "hosts_cfg" {
   for_each = local.vm_maps
-  content = "[${each.key}]\n${yandex_compute_instance.vms["${each.key}"].network_interface.0.ip_address} ansible_ssh_common_args='-o ProxyCommand=\"ssh -W %h:%p -q ubuntu@www.${local.domain}\"'\n"
+  content = "[${each.key}]\n${yandex_compute_instance.vms["${each.key}"].network_interface.0.ip_address} ansible_ssh_common_args='-o ProxyCommand=\"ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@www.${local.domain}\"'\n"
   filename = "inventory/${each.key}"
 }
 resource "local_file" "var_cfg" {
-  content = "domain_name: \"${local.domain}\"\nlocaladdress:\n%{ for vm in yandex_compute_instance.vms }  ${vm.name}: ${vm.network_interface.0.ip_address}\n%{ endfor ~}sites:\n%{ for key, value in local.extnames_map ~}- name: ${key}\n  address: \"{{ localaddress.${value} }}\"\n  port: ${lookup(local.local_port_map, "${key}")}\n%{ endfor ~}\n%{ for key, value in local.extnames_map ~}${key}_url: ${value}.${local.domain}\n%{ endfor ~}"
+  content = "domain_name: \"${local.domain}\"\nlocaladdress:\n%{ for vm in yandex_compute_instance.vms }  ${vm.name}: ${vm.network_interface.0.ip_address}\n%{ endfor ~}sites:\n%{ for key, value in local.extnames_map ~}- name: ${key}\n  address: \"{{ localaddress.${value} }}\"\n  port: ${lookup(local.local_port_map, "${key}")}\n%{ endfor ~}\n%{ for key, value in local.extnames_map ~}${key}_url: ${value}.${local.domain}\n%{ endfor ~}\n%{ for key, value in local.vars[terraform.workspace] ~}${key}: \"${value}\"\n%{ endfor ~}"
   filename = "inventory/group_vars/all/vars.yml"
 }

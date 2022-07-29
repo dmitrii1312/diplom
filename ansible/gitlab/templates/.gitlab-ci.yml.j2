@@ -4,10 +4,10 @@ stages:
 deploy_production:
   stage: deploy
   script:
-    - 'which ssh-agent || ( apk update && apk install openssh-client rsync )'
+    - 'which ssh-agent || ( apk update && apk add openssh-client rsync )'
     - eval $(ssh-agent -s)
     - ssh-add <(echo "$SSH_PRIVATE_KEY")
     - mkdir -p ~/.ssh
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-    - rsync -a --delete --exclude .git /builds/root/wordpress/ root@{{ localaddress.app }}:/var/www/html
+    - rsync -a --delete --exclude .git --exclude wp-config.php --exclude wp-settings.php /builds/root/wordpress/ root@{{ localaddress.app }}:/var/www/html
 
