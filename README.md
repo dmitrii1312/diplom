@@ -1,6 +1,6 @@
 ## Диплом
 ### 1. Зарегистрировать доменное имя (любое на ваш выбор в любой доменной зоне).
-На nic.ru зарегистрировано доменное имя dmitrii.website. В личном кабинете не nic.ru появилась возможность делегировать домен:
+На nic.ru зарегистрировано доменное имя dmitrii.website. В личном кабинете на nic.ru появилась возможность делегировать домен:
 ![image](https://user-images.githubusercontent.com/93075740/181727211-d843b10e-b7e4-486f-bf8a-255e2a81bfcc.png)
 В поле DNS-серверы были прописаны DNS-серверы яндекса. 
 
@@ -295,6 +295,40 @@ resource "local_file" "var_cfg" {
 - - В конфигурацию sshd_config добавляется разрешения подключаться пользователем root
 - - Выполняется перезапуск sshd
 
+#### Результаты выполнения
+
+### 7. Настроить CI/CD для автоматического развёртывания приложения.
+При разворачивании gitlab создаётся репозиторий с файлом .gitlab-ci.yml
+```
+stages:
+  - deploy
+
+deploy_production:
+  stage: deploy
+  script:
+    - 'which ssh-agent || ( apk update && apk add openssh-client rsync )'
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - rsync -a --delete --exclude .git --exclude wp-config.php --exclude wp-settings.php /builds/root/wordpress/ root@{{ localaddress.app }}:/var/www/html
+```
+После создания контейнера, в него в папку /builds/root/wordpress клонируется репозиторий, и эта папка синхронизируется с папкой на сервере app.
+
+#### Результат выполнения
+
+### 8. Настроить мониторинг инфраструктуры с помощью стека: Prometheus, Alert Manager и Grafana
+#### Описание роли
+Роль выполняетсе на всех хостах из инвентаря. Таски выполняются на группе monitoring и остальных хостах. В процессе деплоя выполняются следующие задачи:
+- На хосте monitoring устанавливается docker и docker-compose
+- Синхронизируется папка stack с манифестом для docker-compose и конфигами сервисов
+- Составляется список адресов клиентских машин, который будет использован для настройки job node_exporter Prometheus'а
+- Далее копируется конфиг prometheus.yml
+- Скачиваются образы и из них запускаются контейнеры prometheus
+- На клиентские машины устанавливается node_exporter в виде сервиса
+- Сервис node_exporter запускается и включается его автозапуск
+
+#### Результат выполнения
 
 ### Репозиторий со всеми Terraform манифестами и готовность продемонстрировать создание всех ресурсов с нуля.
 
