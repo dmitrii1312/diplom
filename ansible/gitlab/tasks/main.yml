@@ -31,6 +31,7 @@
       src: gitlab.rb.j2
       dest: /etc/gitlab/gitlab.rb
       mode: 700
+    notify: reconfigure gitlab
 
   - name: Install gitlab
     apt:
@@ -40,9 +41,10 @@
       update_cache: true
     environment:
       EXTERNAL_URL: "https://{{ gitlab_url }}"
+    notify: reconfigure gitlab
 
-  - name: reconfigure gitlab      
-    shell: gitlab-ctl reconfigure
+  - name: flush handlers    
+    meta: flush_handlers
 
   - name: Copy script to gitlab
     template:
