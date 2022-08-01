@@ -202,9 +202,8 @@ resource "yandex_dns_recordset" "dns_records" {
   7) создание inventory и group_vars для ansible
   ```
   resource "local_file" "hosts_cfg" {
-  for_each = local.vm_maps
-  content = "[${each.key}]\n${yandex_compute_instance.vms["${each.key}"].network_interface.0.ip_address} ansible_ssh_common_args='-o ProxyCommand=\"ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@www.${local.domain}\"'\n"
-  filename = "inventory/${each.key}"
+  content = "%{ for key, value in local.vm_maps }[${key}]\n${yandex_compute_instance.vms["${key}"].network_interface.0.ip_address} ansible_ssh_common_args='-o ProxyCommand=\"ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@${yandex_compute_instance.vms["${local.reverse_proxy}"].network_interface.0.nat_ip_address}\"'\n\n%{ endfor }"
+  filename = "inventory/hosts"
 }
 resource "local_file" "var_cfg" {
   content = "domain_name: \"${local.domain}\"\nlocaladdress:\n%{ for vm in yandex_compute_instance.vms }  ${vm.name}: ${vm.network_interface.0.ip_address}\n%{ endfor ~}sites:\n%{ for key, value in local.extnames_map ~}- name: ${key}\n  address: \"{{ localaddress.${value} }}\"\n  port: ${lookup(local.local_port_map, "${key}")}\n%{ endfor ~}\n%{ for key, value in local.extnames_map ~}${key}_url: ${value}.${local.domain}\n%{ endfor ~}\n%{ for key, value in local.vars[terraform.workspace] ~}${key}: \"${value}\"\n%{ endfor ~}"
@@ -212,6 +211,87 @@ resource "local_file" "var_cfg" {
 }
   ```
 #### Результаты terraform apply
+Создалась сеть:
+![image](https://user-images.githubusercontent.com/93075740/182112894-3e5c312c-6ee6-48c8-8947-36fcb00c62cc.png)
+
+Создались подсети:
+![image](https://user-images.githubusercontent.com/93075740/182113103-36758408-07c6-4b99-8ab6-8a1f582ab18c.png)
+
+Создались виртуальные машины:
+![image](https://user-images.githubusercontent.com/93075740/182113673-74f82d82-1532-4092-9e48-3ebedd8778a5.png)
+
+Создались записи DNS:
+![image](https://user-images.githubusercontent.com/93075740/182114043-400eea80-eae2-4462-9d84-bee1475b7437.png)
+
+Создались файлы inventory/hosts и inventory/group_vars/all/vars.yml
+```
+$ cat inventory/hosts
+[app]
+192.168.50.31 ansible_ssh_common_args='-o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@84.201.128.57"'
+
+[db01]
+192.168.50.21 ansible_ssh_common_args='-o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@84.201.128.57"'
+
+[db02]
+192.168.50.12 ansible_ssh_common_args='-o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@84.201.128.57"'
+
+[gitlab]
+192.168.50.24 ansible_ssh_common_args='-o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@84.201.128.57"'
+
+[monitoring]
+192.168.50.11 ansible_ssh_common_args='-o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@84.201.128.57"'
+
+[nginx]
+192.168.50.19 ansible_ssh_common_args='-o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@84.201.128.57"'
+
+[runner]
+192.168.50.3 ansible_ssh_common_args='-o ProxyCommand="ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@84.201.128.57"'
+```
+```
+$ cat inventory/group_vars/all/vars.yml
+domain_name: "dmitrii.website"
+localaddress:
+  app: 192.168.50.31
+  db01: 192.168.50.21
+  db02: 192.168.50.12
+  gitlab: 192.168.50.24
+  monitoring: 192.168.50.11
+  nginx: 192.168.50.19
+  runner: 192.168.50.3
+sites:
+- name: alertmanager
+  address: "{{ localaddress.monitoring }}"
+  port: 9093
+- name: gitlab
+  address: "{{ localaddress.gitlab }}"
+  port: 80
+- name: grafana
+  address: "{{ localaddress.monitoring }}"
+  port: 3000
+- name: prometheus
+  address: "{{ localaddress.monitoring }}"
+  port: 9090
+- name: www
+  address: "{{ localaddress.app }}"
+  port: 80
+alertmanager_url: monitoring.dmitrii.website
+gitlab_url: gitlab.dmitrii.website
+grafana_url: monitoring.dmitrii.website
+prometheus_url: monitoring.dmitrii.website
+www_url: app.dmitrii.website
+git_root: "Qwerty123"
+mysql_database_name: "wordpress"
+mysql_password: "wordpress"
+mysql_replication_password: "123456"
+mysql_root_password: "123456"
+mysql_username: "wordpress"
+private_token: "sdfjeiw123qsxerty865"
+testcert: "false"
+wordpress_db_name: "{{ mysql_database_name }}"
+wordpress_db_username: "{{ mysql_username }}"
+wordpress_dp_password: "{{ mysql_password }}"
+wordpress_web_root: "/var/www/html"
+```
 
 ### 3. Настроить внешний Reverse Proxy на основе Nginx и LetsEncrypt.
 #### Описание роли
@@ -230,7 +310,51 @@ resource "local_file" "var_cfg" {
 - Для каждого внешнего сайта генерируется конфиг с настройками какой сервер будет обслуживать запросы с этого адреса. Конфиги помещаются в папку /etc/nginx/sites-enabled, файлы названы по настроенному внешнему имени
 - Для каждого сайта генерируется сертификат при помощи certbot
 - Перезапускается nginx
-#### Результаты выполнения
+
+#### Результаты выполнения ansible-playbook nginx.yml
+После выполнения плейбука создались конфиги в папке /etc/nginx/sites-enabled вида:
+```
+$ cat /etc/nginx/sites-enabled/www
+server {
+    server_name www.dmitrii.website;
+    client_max_body_size 1G;
+    location / {
+        proxy_redirect          off;
+
+        proxy_buffering off;
+
+        proxy_set_header    Host                $http_host_with_default;
+        proxy_set_header    X-Real-IP           $remote_addr;
+        proxy_set_header    X-Forwarded-For     $proxy_add_x_forwarded_for;
+        proxy_set_header    X-Forwarded-Proto   $scheme;
+        proxy_pass http://192.168.50.31/;
+
+    }
+
+
+    listen [::]:443 ssl; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/www.dmitrii.website/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/www.dmitrii.website/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+}
+server {
+    if ($host = www.dmitrii.website) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    listen [::]:80;
+    server_name www.dmitrii.website;
+    return 404; # managed by Certbot
+```
+так же создались сертификаты для всех проксируемых сайтов alertmanager.dmitrii.website, gitlab.dmitrii.website, grafana.dmitrii.website, prometheus.dmitrii.website и www.dmitrii.website
+
+Скрин сайта www.dmitrii.website
+![image](https://user-images.githubusercontent.com/93075740/182118920-49707986-44f2-4ce6-91e9-fd3ac889f7c0.png)
 
 ### 4. Настроить кластер MySQL.
 #### Описание роли
@@ -248,7 +372,8 @@ resource "local_file" "var_cfg" {
 - на db02 запускается репликация
 - создаётся база wordpress и пользователь wordpress c паролем wordpress
 
-#### Результаты выполнения
+#### Результат выполнение ansible-playbook mysql.yml
+
 
 ### 5. Установить WordPress
 #### Описание роли
