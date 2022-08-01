@@ -503,7 +503,7 @@ mysql> show databases;
 #### Результаты выполнения ansible-playbook wordpress.yml
 Скрин сайта www.dmitrii.website
 ![image](https://user-images.githubusercontent.com/93075740/182125874-06e4fc73-f631-406e-8f5d-b7840c022f4c.png)
-в конфиге установлены параметры:
+в конфиге wp-config.php установлены параметры:
 ```
 define( 'DB_NAME', 'wordpress' );
 define( 'DB_USER', 'wordpress' );
@@ -583,6 +583,9 @@ deploy_production:
 После создания контейнера, в него в папку /builds/root/wordpress клонируется репозиторий, и эта папка синхронизируется с папкой на сервере app.
 
 #### Результат выполнения
+После выполнения действий в репозитории раннер запускает workflow:
+![image](https://user-images.githubusercontent.com/93075740/182132940-dd6c8b61-1ca1-4e80-82e4-7244a0859bec.png)
+
 
 ### 8. Настроить мониторинг инфраструктуры с помощью стека: Prometheus, Alert Manager и Grafana
 #### Описание роли
@@ -595,7 +598,39 @@ deploy_production:
 - На клиентские машины устанавливается node_exporter в виде сервиса
 - Сервис node_exporter запускается и включается его автозапуск
 
-#### Результат выполнения
+#### Результат выполнения ansible-playbook monitoring.yml
+На хосте monitoring запущены контейнеры:
+```
+# docker ps
+CONTAINER ID   IMAGE                                       COMMAND                  CREATED          STATUS                    PORTS                                       NAMES
+183e40db3c6f   prom/node-exporter:v0.18.1                  "/bin/node_exporter …"   57 minutes ago   Up 57 minutes             9100/tcp                                    nodeexporter
+478280908aed   prom/alertmanager:v0.20.0                   "/bin/alertmanager -…"   57 minutes ago   Up 57 minutes             0.0.0.0:9093->9093/tcp, :::9093->9093/tcp   alertmanager
+9a3310ddbf12   prom/pushgateway:v1.2.0                     "/bin/pushgateway"       57 minutes ago   Up 57 minutes             9091/tcp                                    pushgateway
+9bb83dc165fa   prom/prometheus:v2.17.1                     "/bin/prometheus --c…"   57 minutes ago   Up 57 minutes             0.0.0.0:9090->9090/tcp, :::9090->9090/tcp   prometheus
+0332270a92e5   grafana/grafana:7.4.2                       "/run.sh"                57 minutes ago   Up 57 minutes             0.0.0.0:3000->3000/tcp, :::3000->3000/tcp   grafana
+96c50143ca88   gcr.io/google-containers/cadvisor:v0.34.0   "/usr/bin/cadvisor -…"   57 minutes ago   Up 57 minutes (healthy)   8080/tcp                                    cadvisor
+```
+На хостах установлен и запущен сервис node_exporter
+```
+# systemctl status node_exporter
+● node_exporter.service - simple node exporter service
+     Loaded: loaded (/etc/systemd/system/node_exporter.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2022-08-01 11:15:05 UTC; 59min ago
+   Main PID: 3854 (node_exporter)
+      Tasks: 6 (limit: 2310)
+     Memory: 8.5M
+     CGroup: /system.slice/node_exporter.service
+             └─3854 /opt/node_exporter/node_exporter
+```
+Доступны web-интерфейсы prometheus по адресам grafana.dmitrii.website
+![image](https://user-images.githubusercontent.com/93075740/182145939-6775405b-e1a0-4e0d-af25-19bfdb0ff99b.png)
+prometheus.dmitrii.website
+![image](https://user-images.githubusercontent.com/93075740/182146259-0afc42f9-067e-444c-ac86-0562853a1304.png)
+alertmanager.dmitrii.website
+![image](https://user-images.githubusercontent.com/93075740/182147210-edbb5d5b-3587-42e0-a44e-2a44cb3e2416.png)
+В grafana отображаются данные со всех хостов:
+![image](https://user-images.githubusercontent.com/93075740/182151556-e28f856f-c117-4553-aff1-ea278b5154fe.png)
+
 
 ### Репозиторий со всеми Terraform манифестами и готовность продемонстрировать создание всех ресурсов с нуля.
 
@@ -630,7 +665,7 @@ Terraform при создании виртуальных машин генери
 - https://gitlab.dmitrii.website (Gitlab)
 ![image](https://user-images.githubusercontent.com/93075740/181682214-ad66ab5e-a470-4bcd-9bcb-d5b179e3a3be.png)
 - https://grafana.dmitrii.website (Grafana)
-![image](https://user-images.githubusercontent.com/93075740/181682441-e3fb51f7-1c5b-44a1-99d5-793a9c86b2f6.png)
+![image](https://user-images.githubusercontent.com/93075740/182151864-745d91b2-51b4-4ac9-a0ee-f7c9e37f76bc.png)
 - https://prometheus.dmitrii.website (Prometheus)
 ![image](https://user-images.githubusercontent.com/93075740/181682722-20db6835-1e59-4cac-bc4c-be21eff19c47.png)
 - https://alertmanager.dmitrii.website (Alert Manager)
