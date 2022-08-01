@@ -373,7 +373,122 @@ server {
 - создаётся база wordpress и пользователь wordpress c паролем wordpress
 
 #### Результат выполнение ansible-playbook mysql.yml
+Запущена репликация:
+```
+# mysql -p
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 24
+Server version: 8.0.30-0ubuntu0.20.04.2 (Ubuntu)
 
+Copyright (c) 2000, 2022, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> SHOW SLAVE STATUS\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for source to send event
+                  Master_Host: 192.168.50.21
+                  Master_User: replication
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: binlog.000004
+          Read_Master_Log_Pos: 3985
+               Relay_Log_File: fhma5coq7vnekql4jdal-relay-bin.000002
+                Relay_Log_Pos: 1306
+        Relay_Master_Log_File: binlog.000004
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 3985
+              Relay_Log_Space: 1531
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 9029
+                  Master_UUID: a1fcaee0-117e-11ed-8c8b-d00d163a7660
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Replica has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set:
+            Executed_Gtid_Set:
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name:
+           Master_TLS_Version:
+       Master_public_key_path:
+        Get_master_public_key: 0
+            Network_Namespace:
+1 row in set, 1 warning (0.00 sec)
+```
+Созданы необходимые пользователи:
+```
+mysql> use mysql;
+Database changed
+mysql> select user,host from user;
++------------------+---------------+
+| user             | host          |
++------------------+---------------+
+| replication      | 127.0.0.1     |
+| root             | 127.0.0.1     |
+| replication      | 192.168.50.12 |
+| replication      | 192.168.50.21 |
+| wordpress        | 192.168.50.31 |
+| debian-sys-maint | localhost     |
+| mysql.infoschema | localhost     |
+| mysql.session    | localhost     |
+| mysql.sys        | localhost     |
+| replication      | localhost     |
+| root             | localhost     |
++------------------+---------------+
+11 rows in set (0.00 sec)
+```
+Создана база wordpress
+```
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
+| wordpress          |
++--------------------+
+5 rows in set (0.00 sec)
+```
 
 ### 5. Установить WordPress
 #### Описание роли
@@ -385,7 +500,18 @@ server {
 - Удаляется файл /var/www/html/index.html который идёт с пакетом apache2. После этого по пути / будет отдаваться файл index.php
 - Проверяется, что apache2 запущен
 
-#### Результаты выполнения
+#### Результаты выполнения ansible-playbook wordpress.yml
+Скрин сайта www.dmitrii.website
+![image](https://user-images.githubusercontent.com/93075740/182125874-06e4fc73-f631-406e-8f5d-b7840c022f4c.png)
+в конфиге установлены параметры:
+```
+define( 'DB_NAME', 'wordpress' );
+define( 'DB_USER', 'wordpress' );
+define( 'DB_PASSWORD', 'wordpress' );
+define( 'DB_HOST', '192.168.50.21' );
+define( 'WP_HOME', 'https://www.dmitrii.website' );
+define( 'WP_SITEURL', 'https://www.dmitrii.website' );
+```
 
 ### 6. Развернуть Gitlab CE и Gitlab Runner.
 #### Описание роли
@@ -412,7 +538,7 @@ server {
 - - Чтобы не портить текущую установку Wordpress, в папку репозитория распаковывается свежая версия Wordpress
 - - Проверяется состояние репозитория, и если есть незакоммиченные изменения, оповещается handler git add/commit/push
 - - вызываются все накопившиеся hadler (регистрация runner и git add/commit/push)
-- - Создаётся пара ключей ssh для доступа runner к app (/tmp/app-key и /tmp/app-key.pub
+- - Создаётся ключевая пара ssh для доступа runner к app (/tmp/app-key и /tmp/app-key.pub
 - - Получается идентификатор пользователя root
 - - и ко всем проектам этого пользователя добавляется переменная SSH_PRIVATE_KEY, содержащая закрытый ключ /tmp/app-key
 - На app
@@ -420,7 +546,23 @@ server {
 - - В конфигурацию sshd_config добавляется разрешения подключаться пользователем root
 - - Выполняется перезапуск sshd
 
-#### Результаты выполнения
+#### Результаты выполнения ansible-playbook gitlab.yml
+Создался токен регистрации runner:
+```
+$ cat /tmp/register-token
+p6bP_zfcpzzj2oyVsVnN
+```
+Создалсья проект wordpress:
+![image](https://user-images.githubusercontent.com/93075740/182129999-467daf52-a37e-4cd8-bd24-ce79710d7646.png)
+В репозитории файлы wordpress и .gitlab-ci.yml
+![image](https://user-images.githubusercontent.com/93075740/182130292-1e8c8339-b533-46e2-8856-55c2eaaf08cd.png)
+В проект добавлена переменная SSH_PRIVATE_KEY
+![image](https://user-images.githubusercontent.com/93075740/182131141-f674a66f-7002-4a13-8ebd-5a115368f1fa.png)
+Workflow CI/CD отработал успешно:
+![image](https://user-images.githubusercontent.com/93075740/182131451-a6b9c7b3-c8a1-4078-95e1-f582aff3198d.png)
+Runner зарегистрирован в gitlab
+![image](https://user-images.githubusercontent.com/93075740/182131935-3e9b3dd8-bfb3-4b34-b42d-ebc3fd1ee189.png)
+
 
 ### 7. Настроить CI/CD для автоматического развёртывания приложения.
 При разворачивании gitlab создаётся репозиторий с файлом .gitlab-ci.yml
