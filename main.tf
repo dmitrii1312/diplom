@@ -195,9 +195,8 @@ resource "yandex_dns_recordset" "dns_records" {
   data = ["${yandex_compute_instance.vms["${local.reverse_proxy}"].network_interface.0.nat_ip_address}"]
 }
 resource "local_file" "hosts_cfg" {
-  for_each = local.vm_maps
-  content = "[${each.key}]\n${yandex_compute_instance.vms["${each.key}"].network_interface.0.ip_address} ansible_ssh_common_args='-o ProxyCommand=\"ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@www.${local.domain}\"'\n"
-  filename = "inventory/${each.key}"
+  content = "%{ for key, value in local.vm_maps }[${key}]\n${yandex_compute_instance.vms["${key}"].network_interface.0.ip_address} ansible_ssh_common_args='-o ProxyCommand=\"ssh -o StrictHostKeyChecking=no -W %h:%p -q ubuntu@${yandex_compute_instance.vms["${local.reverse_proxy}"].network_interface.0.nat_ip_address}\"'\n\n%{ endfor }"
+  filename = "inventory/hosts"
 }
 resource "local_file" "var_cfg" {
   content = "domain_name: \"${local.domain}\"\nlocaladdress:\n%{ for vm in yandex_compute_instance.vms }  ${vm.name}: ${vm.network_interface.0.ip_address}\n%{ endfor ~}sites:\n%{ for key, value in local.extnames_map ~}- name: ${key}\n  address: \"{{ localaddress.${value} }}\"\n  port: ${lookup(local.local_port_map, "${key}")}\n%{ endfor ~}\n%{ for key, value in local.extnames_map ~}${key}_url: ${value}.${local.domain}\n%{ endfor ~}\n%{ for key, value in local.vars[terraform.workspace] ~}${key}: \"${value}\"\n%{ endfor ~}"
