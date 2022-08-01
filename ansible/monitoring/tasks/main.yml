@@ -59,7 +59,7 @@
 
   - name: build client list
     delegate_to: localhost
-    shell: "echo -n \", '{{ ansible_facts.default_ipv4.address }}:9100'\" >> /tmp/clients"
+    shell: "echo -n \", '{{ ansible_facts.default_ipv4.address }}:9110'\" >> /tmp/clients"
   
   when: '"monitoring" not in group_names'
 
@@ -110,7 +110,7 @@
       daemon_reload: true
       enabled: true
       name: node_exporter
-      state: started
+      state: restarted
   when: '"monitoring" not in group_names'
 
 

@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/node_exporter/node_exporter
+ExecStart=/opt/node_exporter/node_exporter --web.listen-address=:9110
 ExecStop=killall node_exporter
 
 [Install]
