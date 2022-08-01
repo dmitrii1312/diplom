@@ -16,6 +16,7 @@
       - php-intl
       - php-zip
     state: latest
+    update_cache: yes
 
 - name: Extract wordpress
   unarchive:

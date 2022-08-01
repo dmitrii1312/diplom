@@ -10,6 +10,7 @@
         - tzdata
         - perl
       state: present
+      update_cache: yes
 
   - name: Download installation script
     get_url:
